@@ -14,10 +14,6 @@ public class MainWindow extends JFrame{
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         int xSize = 640;
         int ySize = 640;
-       
-        //setSize(xSize, ySize);
-        
-        
 
         Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
         int xPlace = (int) ((dimension.getWidth() - xSize) / 2);
@@ -32,13 +28,13 @@ public class MainWindow extends JFrame{
         setResizable(false);
         pack();
 
-        JPanel panel2 = new JPanel();        
+        JPanel panel2 = new JPanel();
         setContentPane(panel2);
-        
         panel2.setPreferredSize(new Dimension(640, 640));
         panel2.setLayout(new GridLayout(1,1,0,0));
         panel2.setLocation(0, 0);
         panel2.add(new GameField());
+
         setVisible(true);
     }
 
