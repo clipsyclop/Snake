@@ -1,0 +1,234 @@
+import javax.sound.sampled.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+
+
+public class GameField extends JPanel implements ActionListener {
+    private final int fieldSize = 620;
+    private final int dotSize = 32;
+    private final int allDots = 400;
+    private Image head;
+    private Image food;
+    private Image body;
+    private Image fieldBackground;
+    private Image GameOver;
+    private int foodX;
+    private int foodY;
+    private int[] x = new int [allDots-1];
+    private int[] y = new int [allDots-1];
+    private int dots;
+    private int points;
+    private int snakeSpeed;
+    private static int pointsStatic;
+    private Timer timer;
+    private boolean left = false;
+    private boolean right = true;
+    private boolean up = false;
+    private boolean down = false;
+    private boolean inGame = true;
+
+
+    public GameField(){
+        points=0;
+        setBackground(Color.BLACK);
+        loadImages();
+        initGame();
+        addKeyListener(new FieldKeyListener());
+        setFocusable(true);
+    }
+
+    public void initGame(){
+        dots = 1;
+        timer = new Timer( 300, this);
+        timer.start();
+        createFood();
+    }
+
+
+
+
+
+    public void createFood(){
+    	if (dots==1) {
+    		foodX = new Random().nextInt(20)*dotSize;
+            foodY = new Random().nextInt(20)*dotSize;
+    	}
+        for (int i = 1; i < dots; i++) {
+            foodX = new Random().nextInt(20)*dotSize;
+            foodY = new Random().nextInt(20)*dotSize;
+            if ((x[i]== foodX) && (y[i]== foodY)){
+                return;
+            }
+        }
+
+
+    }
+
+    public void loadImages(){
+        ImageIcon foodImg = new ImageIcon("Images/food.png");
+        food = foodImg.getImage();
+        ImageIcon headImg = new ImageIcon("Images/head.png");
+        head = headImg.getImage();
+        ImageIcon bodyImg = new ImageIcon("Images/body.png");
+        body = bodyImg.getImage();
+        ImageIcon fieldImg = new ImageIcon("Images/640x640.png");
+        fieldBackground = fieldImg.getImage();
+        ImageIcon GameOverImg = new ImageIcon("Images/GameOver.png");
+        GameOver = GameOverImg.getImage();
+
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if(inGame){
+            g.drawImage(fieldBackground,0,0,this);
+            g.drawImage(food,foodX,foodY,this);
+            g.drawImage(head,x[0],y[0],this);
+            for (int i = 1; i < dots; i++) {
+                g.drawImage(body,x[i],y[i],this);
+            }
+        }
+        else{
+            g.drawImage(GameOver,0,0,this);
+            g.setColor(Color.GREEN);
+            g.setFont(new Font("TimesRoman", Font.BOLD, 36));
+            g.drawString(Integer.toString(points), 470, 405);
+
+            }
+    }
+
+
+    public void move(){
+        for(int i = dots; i>0;i--){
+            x[i] = x[i-1];
+            y[i] = y[i-1];
+        }
+        if(left){
+            x[0]-=dotSize;
+        }
+        if(right){
+            x[0]+=dotSize;
+        }
+        if(up){
+            y[0]-=dotSize;
+        }
+        if(down){
+            y[0]+=dotSize;
+        }
+    }
+
+    public void checkFood(){
+        if (x[0] == foodX && y[0] == foodY){
+            dots++;
+            createFood();
+            points++;
+            pointsStatic=points;
+            if (pointsStatic<5){
+                timer.setDelay(300-pointsStatic*10);
+            }
+            if (pointsStatic==5){
+                GameSound("speed");
+                timer.setDelay(75);
+            }
+            if (pointsStatic>5){
+                timer.setDelay(75);
+            }
+        }
+    }
+
+    public void checkCollisions(){
+        for (int i = dots; i >0 ; i--) {
+            if(i>4 && x[0] == x[i] && y[0] == y[i]){
+                inGame = false;
+                repaint();
+            }
+        }
+
+        if(x[0]>fieldSize){
+            inGame = false;
+        }
+        if(x[0]<0){
+            inGame = false;
+        }
+        if(y[0]>fieldSize){
+            inGame = false;
+        }
+        if(y[0]<0){
+            inGame = false;
+        }
+        if (inGame != true){
+            GameSound("endGame");
+            System.out.println(pointsStatic);
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (inGame){
+            move();
+            checkFood();
+            checkCollisions();
+        }
+        repaint();
+    }
+
+    public void GameSound(String soundName){
+            try {
+                File soundFile = new File("Sounds/" + soundName+".wav");
+                AudioInputStream ais = AudioSystem.getAudioInputStream(soundFile);
+                Clip clip = AudioSystem.getClip();
+                clip.open(ais);
+                clip.start();
+                Thread.sleep(clip.getMicrosecondLength() / 1000);
+                clip.loop(1);
+                clip.stop();
+                clip.close();
+                Thread.currentThread().interrupt();
+            } catch (IOException | UnsupportedAudioFileException | LineUnavailableException exc) {
+                exc.printStackTrace();
+            } catch (InterruptedException exc) {
+            }
+    }
+
+
+    class FieldKeyListener extends KeyAdapter{
+        @Override
+        public void keyPressed(KeyEvent e) {
+            super.keyPressed(e);
+            int key = e.getKeyCode();
+            if((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && ! right){
+                left = true;
+                right = false;
+                up = false;
+                down = false;
+            }
+            if((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && !left){
+                left = false;
+                right = true;
+                up = false;
+                down = false;
+            }
+            if((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && !down){
+                left = false;
+                right = false;
+                up = true;
+                down = false;
+            }
+            if((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && !up){
+                left = false;
+                right = false;
+                up = false;
+                down = true;
+            }
+        }
+    }
+}
+
