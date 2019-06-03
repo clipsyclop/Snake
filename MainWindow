@@ -1,47 +1,207 @@
-import java.io.File;
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.Random;
 
-import javax.swing.UIManager.LookAndFeelInfo;
 
-public class MainWindow extends JFrame{
-    private Container contentPane;
+public class GameField extends JPanel implements ActionListener {
+    private final int fieldSize = 620;
+    private final int dotSize = 32;
+    private final int allDots = 400;
+    private Image head;
+    private Image food;
+    private Image body;
+    private Image fieldBackground;
+    private Image GameOver;
+    private double headRotation;
+    private int foodX;
+    private int foodY;
+    private int[] x = new int[allDots - 1];
+    private int[] y = new int[allDots - 1];
+    private int dots;
+    private int points;
+    private int randomX;
+    private int randomY;
+    private int delay;
+    private static int pointsStatic;
+    private Timer timer;
+    private boolean left = false;
+    private boolean right = true;
+    private boolean up = false;
+    private boolean down = false;
+    private boolean inGame = true;
 
-    public MainWindow() {
-        setTitle("Snake");
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        int xSize = 640;
-        int ySize = 640;
+    GameField() {
+        points = 0;
+        setBackground(Color.BLACK);
+        loadImages();
+        initGame();
+        addKeyListener(new FieldKeyListener());
+        setFocusable(true);
+    }
 
-        Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
-        int xPlace = (int) ((dimension.getWidth() - xSize) / 2);
-        int yPlace = (int) ((dimension.getHeight() - ySize) / 2);
-        setLocation(xPlace, yPlace);
+    public void initGame() {
+        dots = 3;
+        timer = new Timer(300, this);
+        timer.start();
+        createFood();
+    }
 
-        JPanel panel1 = new JPanel();
-        panel1.setPreferredSize(new Dimension(640, 640));
-        panel1.setLayout(new GridLayout(1,1,0,0));
-        panel1.setAlignmentX(Component.CENTER_ALIGNMENT);
-        setContentPane(panel1);
-        setResizable(false);
-        pack();
+    public void createFood() {
+        randomX = new Random().nextInt(20) * dotSize;
+        randomY = new Random().nextInt(20) * dotSize;
+        if (dots == 1 && randomX != x[0] && randomY != y[0]) {
+            foodX = randomX;
+            foodX = randomY;
+        }
+        for (int i = 1; i < dots; i++) {
+            foodX = new Random().nextInt(20) * dotSize;
+            foodY = new Random().nextInt(20) * dotSize;
+            if ((x[i] == foodX) && (y[i] == foodY)) {
+                return;
+            }
+        }
+    }
 
-        JPanel panel2 = new JPanel();
-        setContentPane(panel2);
-        panel2.setPreferredSize(new Dimension(640, 640));
-        panel2.setLayout(new GridLayout(1,1,0,0));
-        panel2.setLocation(0, 0);
-        panel2.add(new GameField());
+    void loadImages() {
+        ImageIcon foodImg = new ImageIcon("resources/image/food.png");
+        food = foodImg.getImage();
+        ImageIcon headImg = new ImageIcon("resources/image/head.png");
+        head = headImg.getImage();
+        ImageIcon bodyImg = new ImageIcon("resources/image/body.png");
+        body = bodyImg.getImage();
+        ImageIcon fieldImg = new ImageIcon("resources/image/640x640.png");
+        fieldBackground = fieldImg.getImage();
+        ImageIcon GameOverImg = new ImageIcon("resources/image/GameOver.png");
+        GameOver = GameOverImg.getImage();
+    }
 
-        setVisible(true);
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (inGame) {
+            g.drawImage(fieldBackground, 0, 0, this);
+            g.drawImage(food, foodX, foodY, this);
+            g.drawImage(head, x[0], y[0], this);
+            for (int i = 1; i < dots; i++) {
+                g.drawImage(body, x[i], y[i], this);
+            }
+        } else {
+            g.drawImage(GameOver, 0, 0, this);
+            g.setColor(Color.GREEN);
+            g.setFont(new Font("TimesRoman", Font.BOLD, 36));
+            g.drawString(Integer.toString(points), 470, 405);
+        }
     }
 
 
-    public static void main(String[] args){
-        MainWindow newWindow = new MainWindow();
+    public void move() {
+        for (int i = dots; i > 0; i--) {
+            x[i] = x[i - 1];
+            y[i] = y[i - 1];
+        }
+        if (left) {
+            x[0] -= dotSize;
+        }
+        if (right) {
+            x[0] += dotSize;
+        }
+        if (up) {
+            y[0] -= dotSize;
+        }
+        if (down) {
+            y[0] += dotSize;
+        }
     }
 
+    public void checkFood() {
+        if (x[0] == foodX && y[0] == foodY) {
+            dots++;
+            createFood();
+            points++;
+            pointsStatic = points;
+            if (pointsStatic < 5) {
+                delay = 300 - pointsStatic * 15;
+            }
+            if (pointsStatic == 5) {
+                //Sound.playSound("resources/sound/speed.wav").join();
+                delay = 100;
+            }
+            if (pointsStatic > 5) {
+                delay = 100;
+            }
+            timer.setDelay(delay);
+        }
+    }
 
+    public void checkCollisions() {
+        for (int i = dots; i > 0; i--) {
+            if (i > 4 && x[0] == x[i] && y[0] == y[i]) {
+                inGame = false;
+                repaint();
+            }
+        }
+
+        if ((x[0] > fieldSize)
+                || (x[0] < 0)
+                || (y[0] > fieldSize)
+                || (y[0] < 0)) {
+            inGame = false;
+        }
+
+        if (!inGame) {
+            //Sound.playSound("resources/sound/endGame.wav").join();
+            System.out.println(pointsStatic);
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (inGame) {
+            move();
+            checkFood();
+            checkCollisions();
+        }
+        repaint();
+    }
+
+    class FieldKeyListener extends KeyAdapter {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            super.keyPressed(e);
+            int key = e.getKeyCode();
+            if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && !right) {
+                left = true;
+                right = false;
+                up = false;
+                down = false;
+                headRotation = 90;
+            }
+            if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && !left) {
+                left = false;
+                right = true;
+                up = false;
+                down = false;
+                headRotation = 270;
+            }
+            if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && !down) {
+                left = false;
+                right = false;
+                up = true;
+                down = false;
+                headRotation = 180;
+            }
+            if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && !up) {
+                left = false;
+                right = false;
+                up = false;
+                down = true;
+                headRotation = 0;
+            }
+        }
+    }
 }
+
